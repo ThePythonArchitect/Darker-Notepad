@@ -21,6 +21,7 @@ namespace DarkerNotepad
 
         public MainForm(string fileToOpen)
         {
+            applyingAutoSwitch = true;
             InitializeComponent();
             disableAutoClose();
             string foldername = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -29,6 +30,7 @@ namespace DarkerNotepad
             settingsFile = foldername + "\\settings.txt";
             initialSetup(fileToOpen);
             setupAutoSwitchDictionary();
+            applyingAutoSwitch = false;
             mainTextBox.Select();
         }
 
@@ -85,6 +87,8 @@ namespace DarkerNotepad
                 readFile(fileToOpen);
                 currentFilename = fileToOpen;
                 setSaveStatus(true);
+                //move the cursor to the end
+                mainTextBox.SelectionStart = mainTextBox.Text.Length;
             }
 
             return;
@@ -375,12 +379,14 @@ namespace DarkerNotepad
         private void darkModeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             setDarkMode();
+            Close_All_Menus();
             return;
         }
 
         private void lightModeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             setLightMode();
+            Close_All_Menus();
             return;
         }
 
@@ -481,6 +487,7 @@ namespace DarkerNotepad
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
             onSave();
+            Close_All_Menus();
             return;
         }
 
@@ -533,10 +540,10 @@ namespace DarkerNotepad
 
         private void setSaveStatus(bool complete)
         {
+            if (autosave) { return; }
             string currentTitle = Text;
             if (!complete)
             {
-                Console.WriteLine("adding start to title");
                 if (currentTitle.StartsWith(" "))
                 {
                     Text = "*" + currentTitle.TrimStart();
@@ -607,6 +614,7 @@ namespace DarkerNotepad
 
         private void autoSaveToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Close_All_Menus();
             if (autosave)
             {
                 disableAutosave();
@@ -623,9 +631,7 @@ namespace DarkerNotepad
 
         private void newToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            fileStripMenu.DropDown.Close();
-            themeStripMenu.DropDown.Close();
-            fontToolStripMenuItem.DropDown.Close();
+            Close_All_Menus();
             //erase the current text and open the save dialog
             Popup p = new Popup();
             p.setTitle("Confirm");
@@ -694,6 +700,7 @@ namespace DarkerNotepad
 
         private void arialToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Close_All_Menus();
             changeFontStyle("Arial");
             resetFontStyles();
             arialToolStripMenuItem.Text = "Arial •";
@@ -702,6 +709,7 @@ namespace DarkerNotepad
 
         private void calibriToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Close_All_Menus();
             changeFontStyle("Calibri");
             resetFontStyles();
             calibriToolStripMenuItem.Text = "Calibri •";
@@ -710,6 +718,7 @@ namespace DarkerNotepad
 
         private void consolaToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Close_All_Menus();
             changeFontStyle("Consolas");
             resetFontStyles();
             consolaToolStripMenuItem.Text = "Consolas •";
@@ -718,6 +727,7 @@ namespace DarkerNotepad
 
         private void sanSerifToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Close_All_Menus();
             changeFontStyle("Microsoft Sans Serif");
             resetFontStyles();
             sanSerifToolStripMenuItem.Text = "Sans Serif •";
@@ -726,6 +736,7 @@ namespace DarkerNotepad
 
         private void segoeToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Close_All_Menus();
             changeFontStyle("Segoe UI");
             resetFontStyles();
             segoeToolStripMenuItem.Text = "Segoe •";
@@ -734,6 +745,7 @@ namespace DarkerNotepad
 
         private void timesNewRomanToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Close_All_Menus();
             changeFontStyle("Times New Roman");
             resetFontStyles();
             timesNewRomanToolStripMenuItem.Text = "Times New Roman •";
@@ -742,6 +754,7 @@ namespace DarkerNotepad
 
         private void nineToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Close_All_Menus();
             changeFontSize(9);
             resetFontSizes();
             nineToolStripMenuItem.Text = "9 •";
@@ -750,6 +763,7 @@ namespace DarkerNotepad
 
         private void elevenToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Close_All_Menus();
             changeFontSize(11);
             resetFontSizes();
             elevenToolStripMenuItem.Text = "11 •";
@@ -758,6 +772,7 @@ namespace DarkerNotepad
 
         private void thirteenToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Close_All_Menus();
             changeFontSize(13);
             resetFontSizes();
             thirteenToolStripMenuItem.Text = "13 •";
@@ -766,29 +781,12 @@ namespace DarkerNotepad
 
         private void fifteenToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Close_All_Menus();
             changeFontSize(15);
             resetFontSizes();
             fifteenToolStripMenuItem.Text = "15 •";
             return;
         }
-
-        /*
-        no longer used!
-        private void autoLoadLastFileToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (autoOpen)
-            {
-                autoOpen = false;
-                autoLoadLastFileToolStripMenuItem.Text = "Auto Open Last File";
-            }
-            else
-            {
-                autoOpen = true;
-                autoLoadLastFileToolStripMenuItem.Text = "Auto Open Last File •";
-            }
-            writeSettings();
-            return;
-        }*/
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
@@ -863,15 +861,21 @@ namespace DarkerNotepad
             return;
         }
 
-        private void mainTextBox_Click(object sender, EventArgs e)
+        private void Close_All_Menus()
         {
-            //close all the strip menus
-            //file, font, style, size, and theme
             fileStripMenu.DropDown.Close();
             fontToolStripMenuItem.DropDown.Close();
             styleToolStripMenuItem.DropDown.Close();
             sizeToolStripMenuItem.DropDown.Close();
             themeStripMenu.DropDown.Close();
+            return;
+        }
+
+        private void mainTextBox_Click(object sender, EventArgs e)
+        {
+            //close all the strip menus
+            //file, font, style, size, and theme
+            Close_All_Menus();
             return;
         }
 
