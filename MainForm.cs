@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using System.Linq;
 
 namespace DarkerNotepad
 {
@@ -632,6 +633,7 @@ namespace DarkerNotepad
         private void newToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Close_All_Menus();
+
             //erase the current text and open the save dialog
             Popup p = new Popup();
             p.setTitle("Confirm");
@@ -790,31 +792,11 @@ namespace DarkerNotepad
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Modifiers == Keys.Control && e.KeyCode == Keys.S && currentFilename != "")
-            {
-                writeToDisk(currentFilename);
-                setSaveStatus(true);
-                e.Handled = true;
-                e.SuppressKeyPress = true;
-            }
-            //if current file name IS empty, then open the save as dialog
-            saveFileDialog1.FileName = "";
-            saveFileDialog1.DefaultExt = "txt";
-            saveFileDialog1.Filter = "Text file|*.txt";
-            saveFileDialog1.Title = "Save File";
-            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
-            {
-                currentFilename = saveFileDialog1.FileName;
-                writeToDisk(saveFileDialog1.FileName);
-                setSaveStatus(true);
-                setTitle();
-                writeSettings();
-                return;
-            }
+            handle_key_press(sender, e);
             return;
         }
 
-        private void mainTextBox_KeyDown(object sender, KeyEventArgs e)
+        private void handle_key_press(object sender, KeyEventArgs e)
         {
             if (e.Modifiers == Keys.Control && e.KeyCode == Keys.S && currentFilename != "")
             {
@@ -840,6 +822,21 @@ namespace DarkerNotepad
                     return;
                 }
             }
+            else if (e.KeyCode == Keys.F5)
+            {
+                //check if the file is a java file,
+                //it it is, then compile and run it
+
+                //check if the file is a python file,
+                //if it is, then 
+            }
+
+            return;
+        }
+
+        private void mainTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            handle_key_press(sender, e);
             return;
         }
 
