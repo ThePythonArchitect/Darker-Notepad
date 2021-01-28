@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using System.Linq;
+using Microsoft.Win32;
 
 namespace DarkerNotepad
 {
@@ -17,22 +18,46 @@ namespace DarkerNotepad
         private string fontStyle = "consolas";
         private int fontSize = 11;
         private bool closePopup = false;
-        private bool applyingAutoSwitch = false;
-        private Dictionary<string, string> autoSwitchDictionary;
 
         public MainForm(string fileToOpen)
         {
-            applyingAutoSwitch = true;
             InitializeComponent();
+            setFileAssociation();
             disableAutoClose();
             string foldername = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             foldername += "\\DarkerNotepad";
             Directory.CreateDirectory(foldername);
             settingsFile = foldername + "\\settings.txt";
             initialSetup(fileToOpen);
-            setupAutoSwitchDictionary();
-            applyingAutoSwitch = false;
             mainTextBox.Select();
+        }
+
+        private void setFileAssociation()
+        {
+            //To get the location the assembly normally resides on disk or the install directory
+            string file_path = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+
+            string full_app_name = "DarkerSoftware.DarkerNotepad";
+
+            //set the reg keys to associate the file
+
+            //set keys
+            Registry.SetValue(@"HKEY_CURRENT_USER\Software\Classes\" + full_app_name + @"\shell\open\command",
+                null, $"{file_path} %1");
+            Registry.SetValue(@"HKEY_CURRENT_USER\Software\Classes\.txt",
+                null, "txtfile");
+
+            //set entries to maintain the ability to create new text files
+            Registry.SetValue(@"HKEY_CURRENT_USER\Software\Classes\.txt",
+                "Content Type", "text/plain");
+            Registry.SetValue(@"HKEY_CURRENT_USER\Software\Classes\.txt",
+                "PerceivedType", "text");
+            Registry.SetValue(@"HKEY_CURRENT_USER\Software\Classes\.txt\ShellNew",
+                "NullFile", "");
+            Registry.SetValue(@"HKEY_CURRENT_USER\Software\Classes\.txt\ShellNew",
+                "ItemName", @"%SystemRoot%\system32\notepad.exe,-470");
+
+            return;
         }
 
         private void disableAutoClose()
@@ -44,13 +69,6 @@ namespace DarkerNotepad
             styleToolStripMenuItem.DropDown.AutoClose = false;
             sizeToolStripMenuItem.DropDown.AutoClose = false;
             themeStripMenu.DropDown.AutoClose = false;
-            return;
-        }
-
-        private void setupAutoSwitchDictionary()
-        {
-            autoSwitchDictionary = new Dictionary<string, string>();
-            autoSwitchDictionary.Add("\t", "    ");
             return;
         }
 
@@ -87,6 +105,7 @@ namespace DarkerNotepad
                 //if it was, then read its contents
                 readFile(fileToOpen);
                 currentFilename = fileToOpen;
+                setTitle();
                 setSaveStatus(true);
                 //move the cursor to the end
                 mainTextBox.SelectionStart = mainTextBox.Text.Length;
@@ -447,7 +466,9 @@ namespace DarkerNotepad
         {
             if (currentFilename != "")
             {
-                Text = $"Darker Notepad | Current File: {currentFilename}";
+                string filename = Path.GetFileNameWithoutExtension(currentFilename);
+                Console.WriteLine($"setting title to: {filename}");
+                Text = $"Darker Notepad | {filename}";
             }
             else
             {
@@ -479,7 +500,6 @@ namespace DarkerNotepad
                 writeToDisk(saveFileDialog1.FileName);
                 setSaveStatus(true);
                 setTitle();
-                writeSettings();
                 return;
             }
             return;
@@ -509,6 +529,10 @@ namespace DarkerNotepad
             fileStripMenu.DropDown.Close();
             themeStripMenu.DropDown.Close();
             fontToolStripMenuItem.DropDown.Close();
+
+            //check if there are unsaved changes in the current file
+            //if there is, then offer to save them
+
             openFileDialog1.Title = "Open File";
             openFileDialog1.FileName = "";
             openFileDialog1.DefaultExt = "txt";
@@ -561,41 +585,8 @@ namespace DarkerNotepad
             return;
         }
 
-        private void autoSwitch()
-        {
-            //used to replace substrings with other substrings
-            
-            //this is to prevent the mainTextBox_TextChange event from
-            //firing while we are changing text
-            applyingAutoSwitch = true;
-
-            //replacing substring resets the cursor, so keep track of it
-            int sel = mainTextBox.SelectionStart;
-            //also keep track of how much the text has grown
-            int growth = mainTextBox.Text.Length;
-
-            //loop through the dictionary and replace all substring
-            //with their replacements
-            foreach (KeyValuePair<string, string> subString in autoSwitchDictionary)
-            {
-                //replace subString.Key with subString.Value
-                mainTextBox.Text = mainTextBox.Text.Replace(subString.Key, subString.Value);
-            }
-
-
-            //calculate growth
-            growth = mainTextBox.Text.Length - growth;
-            //move the cursor back to its original position
-            mainTextBox.SelectionStart = sel + growth;
-
-            applyingAutoSwitch = false;
-            return;
-        }
-
         private void mainTextBox_TextChanged(object sender, EventArgs e)
         {
-            if (applyingAutoSwitch) { return; }
-            autoSwitch();
             if (currentFilename != "" && currentFilename != null && autosave)
             {
                 setSaveStatus(false);
@@ -637,12 +628,23 @@ namespace DarkerNotepad
             //erase the current text and open the save dialog
             Popup p = new Popup();
             p.setTitle("Confirm");
-            p.setText("Are you sure you want to discard the current document?");
-            p.setButton1Text("Discard");
-            p.setButton2Text("Cancel");
-            p.onButton1Clicked += onNewConfirmed;
+            p.setText("Before opening a new document,\nWould you like to save changes to the current document?");
+            p.setButton1Text("Save and Open");
+            p.setButton2Text("Discard Changes and Open");
+            p.onButton1Clicked += onSaveAndNewConfirmed;
+            p.onButton2Clicked += onNewConfirmed;
             if (theme == "dark") p.useDarkMode();
             p.ShowDialog();
+            return;
+        }
+
+        private void onSaveAndNewConfirmed()
+        {
+            //reset current file
+            writeToDisk(currentFilename);
+            currentFilename = "";
+            mainTextBox.Text = "";
+            setTitle();
             return;
         }
 
@@ -828,7 +830,16 @@ namespace DarkerNotepad
                 //it it is, then compile and run it
 
                 //check if the file is a python file,
-                //if it is, then 
+                //if it is, then open the python interpreter and run it
+            }
+            else if (e.KeyCode == Keys.Tab)
+            {
+                //prevent tab from being added
+                e.SuppressKeyPress = true;
+                //add four spaces instead
+                mainTextBox.Hide();
+                mainTextBox.SelectedText = "    ";
+                mainTextBox.Show();
             }
 
             return;
